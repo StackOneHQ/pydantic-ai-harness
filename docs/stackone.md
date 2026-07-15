@@ -7,7 +7,7 @@ description: Give a Pydantic AI agent actions on the user's SaaS accounts (HRIS,
 
 Actions on the user's SaaS accounts (HRIS, ATS, CRM, and more) for Pydantic AI agents, via [StackOne](https://www.stackone.com) -- an integration platform exposing actions across 400+ providers through linked accounts and a single MCP endpoint. The capability handles the StackOne-specific parts: API-key auth, account scoping, action filtering, tool modes, and usage instructions.
 
-[Source](https://github.com/pydantic/pydantic-ai-harness/tree/main/pydantic_ai_harness/stackone/) · [StackOne docs](https://docs.stackone.com)
+[Source](https://github.com/pydantic/pydantic-ai-harness/tree/main/pydantic_ai_harness/stackone/)
 
 ## Installation
 
