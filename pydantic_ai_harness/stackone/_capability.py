@@ -34,7 +34,7 @@ class StackOne(AbstractCapability[AgentDepsT]):
     """Actions on the user's SaaS account (HRIS, ATS, CRM, and more) via StackOne.
 
     StackOne (https://docs.stackone.com) is an integration platform exposing
-    10,000+ actions across 200+ SaaS providers through linked accounts. This
+    actions across 400+ SaaS providers through linked accounts. This
     capability connects the agent to one linked account's actions over
     StackOne's MCP endpoint, handling authentication, tool filtering, and
     usage instructions.
