@@ -40,17 +40,25 @@ class TestStackOneToolset:
     def test_default_url_headers_and_id(self, mcp_recorder: MCPToolsetRecorder):
         StackOneToolset(account_id='45320', api_key='key')
         (client, kwargs) = mcp_recorder.calls[0]
-        assert client == 'https://api.stackone.com/mcp'
+        assert client == 'https://api.stackone.com/mcp?tool-mode=search_execute'
         assert kwargs['headers']['Authorization'].startswith('Basic ')
         assert kwargs['headers']['x-account-id'] == '45320'
         assert kwargs['id'] == 'stackone'
+
+    def test_default_mode_resolution(self, mcp_recorder: MCPToolsetRecorder):
+        StackOneToolset(account_id='1', api_key='key', actions=['*_list_*'])
+        assert mcp_recorder.calls[0][0] == 'https://api.stackone.com/mcp'
+        StackOneToolset(account_id='1', api_key='key', tool_mode='individual')
+        assert mcp_recorder.calls[1][0] == 'https://api.stackone.com/mcp'
 
     def test_custom_id_reaches_the_connection(self, mcp_recorder: MCPToolsetRecorder):
         StackOneToolset(account_id='45320', api_key='key', id='stackone_eu')
         assert mcp_recorder.calls[0][1]['id'] == 'stackone_eu'
 
     def test_custom_base_url(self, mcp_recorder: MCPToolsetRecorder):
-        StackOneToolset(account_id='45320', api_key='key', base_url='https://api.eu1.stackone.com/')
+        StackOneToolset(
+            account_id='45320', api_key='key', base_url='https://api.eu1.stackone.com/', tool_mode='individual'
+        )
         assert mcp_recorder.calls[0][0] == 'https://api.eu1.stackone.com/mcp'
 
     def test_search_execute_url(self, mcp_recorder: MCPToolsetRecorder):

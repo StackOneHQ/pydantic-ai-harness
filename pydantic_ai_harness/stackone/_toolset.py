@@ -57,6 +57,18 @@ _MCP_PATH = '/mcp'
 _SEARCH_EXECUTE_QUERY = 'tool-mode=search_execute'
 
 
+def resolve_tool_mode(tool_mode: ToolMode | None, actions: Sequence[str]) -> ToolMode:
+    """Resolve the default tool mode: `search_execute`, or `individual` when `actions` are given.
+
+    `search_execute` keeps the prompt footprint constant regardless of catalog
+    size (provider catalogs can exceed model context windows in `individual`
+    mode), while `actions` globs only apply to individually registered tools.
+    """
+    if tool_mode is not None:
+        return tool_mode
+    return 'individual' if actions else 'search_execute'
+
+
 def resolve_api_key(api_key: str | None) -> str:
     """Return the given API key, or the one from `STACKONE_API_KEY`.
 
@@ -84,8 +96,8 @@ def _with_tool_mode(url: str, tool_mode: ToolMode) -> str:
     return f'{url}{separator}{_SEARCH_EXECUTE_QUERY}'
 
 
-def warn_ignored_actions(tool_mode: ToolMode, actions: Sequence[str], *, stacklevel: int) -> None:
-    """Warn that `actions` globs cannot apply in `search_execute` mode."""
+def warn_ignored_actions(tool_mode: ToolMode | None, actions: Sequence[str], *, stacklevel: int) -> None:
+    """Warn that `actions` globs cannot apply in explicitly requested `search_execute` mode."""
     if tool_mode == 'search_execute' and actions:
         warnings.warn(
             '`actions` filters are ignored in `search_execute` mode: individual action names '
@@ -129,7 +141,7 @@ class StackOneToolset(WrapperToolset[AgentDepsT]):
         api_key: str | None = None,
         base_url: str = STACKONE_BASE_URL,
         actions: Sequence[str] = (),
-        tool_mode: ToolMode = 'individual',
+        tool_mode: ToolMode | None = None,
         code_mode: bool = False,
         client: MCPToolsetClient | None = None,
         id: str = 'stackone',
@@ -141,10 +153,12 @@ class StackOneToolset(WrapperToolset[AgentDepsT]):
             api_key: StackOne API key. Defaults to the `STACKONE_API_KEY` environment variable.
             base_url: StackOne API host. Point at a regional or staging host if needed.
             actions: `fnmatch` globs over full tool names (case-insensitive), e.g. `['*_list_*']`.
-                Ignored in `search_execute` mode; construction warns about that combination.
+                Only apply in `individual` mode; explicitly requesting `search_execute`
+                alongside `actions` warns.
             tool_mode: `individual` registers one tool per enabled action; `search_execute`
                 registers two server-side meta-tools that search the catalog and execute
                 actions by id, keeping the prompt footprint constant for large catalogs.
+                `None` picks `search_execute`, or `individual` when `actions` are given.
             code_mode: Tag every tool with `code_mode=True` metadata so a
                 `CodeMode(tools={'code_mode': True})` capability exposes StackOne calls
                 inside its sandbox.
@@ -156,13 +170,14 @@ class StackOneToolset(WrapperToolset[AgentDepsT]):
                 several StackOne toolsets.
         """
         warn_ignored_actions(tool_mode, actions, stacklevel=2)
+        mode = resolve_tool_mode(tool_mode, actions)
         resolved = client if client is not None else f'{base_url.rstrip("/")}{_MCP_PATH}'
         headers: dict[str, str] | None = None
         if isinstance(resolved, str):
-            resolved = _with_tool_mode(resolved, tool_mode)
+            resolved = _with_tool_mode(resolved, mode)
             headers = {'Authorization': _basic_auth(resolve_api_key(api_key)), 'x-account-id': account_id}
         toolset: AbstractToolset[AgentDepsT] = MCPToolset(resolved, id=id, headers=headers)
-        if tool_mode == 'individual' and actions:
+        if mode == 'individual' and actions:
             toolset = toolset.filtered(_action_filter(actions))
         if code_mode:
             toolset = toolset.with_metadata(code_mode=True)

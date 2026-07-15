@@ -45,12 +45,14 @@ class TestStackOne:
     def test_search_execute_warns_on_defer_loading(self):
         with pytest.warns(UserWarning, match='discovery hop'):
             StackOne(account_id='45320', api_key='key', tool_mode='search_execute', id='stackone', defer_loading=True)
+        with pytest.warns(UserWarning, match='discovery hop'):
+            StackOne(account_id='45320', api_key='key', id='stackone', defer_loading=True)
 
     def test_individual_mode_does_not_warn(self):
         StackOne(account_id='45320', api_key='key', actions=['*_list_*'], defer_loading=False)
 
     async def test_agent_run_calls_stackone_tools(self, stackone_server: FastMCP):
-        capability = StackOne(account_id='45320', api_key='key', client=stackone_server)
+        capability = StackOne(account_id='45320', api_key='key', client=stackone_server, tool_mode='individual')
         agent = Agent(TestModel(), capabilities=[capability])
         result = await agent.run('list employees')
         assert 'bamboohr_list_employees' in tool_call_names(result.all_messages())
@@ -62,11 +64,15 @@ class TestStackOne:
         result = await agent.run('list employees')
         assert tool_call_names(result.all_messages()) == {'bamboohr_list_employees'}
 
-    async def test_instructions_injected(self, stackone_server: FastMCP):
-        capability = StackOne(account_id='45320', api_key='key', client=stackone_server)
-        agent = Agent(TestModel(), capabilities=[capability])
+    async def test_instructions_follow_the_resolved_mode(self, stackone_server: FastMCP):
+        individual = StackOne(account_id='45320', api_key='key', client=stackone_server, actions=['*_list_*'])
+        agent = Agent(TestModel(), capabilities=[individual])
         result = await agent.run('list employees')
         assert '{connector}_{action}_{entity}' in request_instructions(result.all_messages())
+        default = StackOne(account_id='45320', api_key='key', client=stackone_server)
+        agent = Agent(TestModel(), capabilities=[default])
+        result = await agent.run('list employees')
+        assert 'must never be guessed' in request_instructions(result.all_messages())
 
     async def test_instructions_disabled(self, stackone_server: FastMCP):
         capability = StackOne(account_id='45320', api_key='key', client=stackone_server, include_instructions=False)

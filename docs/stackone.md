@@ -39,10 +39,10 @@ A linked account is one authenticated connection to one provider. `actions` glob
 
 | `tool_mode` | Tools registered | Best for |
 |---|---|---|
-| `individual` (default) | One tool per enabled action, each with its own schema | Moderate catalogs; per-tool validation, filtering, approval |
-| `search_execute` | Two server-side meta-tools: search the catalog, execute an action by id | Very large catalogs; constant prompt footprint |
+| `search_execute` | Two server-side meta-tools: search the catalog, execute an action by id | Any catalog size; constant prompt footprint |
+| `individual` | One tool per enabled action, each with its own schema | Filtered or moderate catalogs; per-tool validation, filtering, approval |
 
-In `search_execute` mode individual action names never reach the agent, so `actions` globs cannot apply (construction warns). For large catalogs in `individual` mode, `defer_loading=True` (with a stable `id`) uses Pydantic AI's [deferred tool loading](/ai/tools-toolsets/deferred-tools/) instead; combining it with `search_execute` stacks one discovery hop on another, which also warns.
+The default (`tool_mode=None`) resolves to `search_execute`, or `individual` when `actions` globs are given, since the globs only apply to individually registered tools. Provider catalogs can be large enough in `individual` mode to exceed model context windows, so constrain `individual` mode with `actions`, or use `defer_loading=True` (with a stable `id`) for Pydantic AI's [deferred tool loading](/ai/tools-toolsets/deferred-tools/). In `search_execute` mode individual action names never reach the agent, so `actions` globs cannot apply (explicitly combining them warns), and combining `defer_loading` with `search_execute` stacks one discovery hop on another, which also warns.
 
 ## How it composes
 

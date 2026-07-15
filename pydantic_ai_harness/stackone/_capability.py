@@ -14,6 +14,7 @@ from pydantic_ai_harness.stackone._toolset import (
     MCPToolsetClient,
     StackOneToolset,
     ToolMode,
+    resolve_tool_mode,
 )
 
 _INDIVIDUAL_INSTRUCTIONS = (
@@ -50,12 +51,14 @@ class StackOne(AbstractCapability[AgentDepsT]):
     """StackOne API host. Point at a regional or staging host if needed."""
 
     actions: Sequence[str] = ()
-    """`fnmatch` globs over full tool names (case-insensitive), e.g. `['*_list_*']`."""
+    """`fnmatch` globs over full tool names (case-insensitive), e.g. `['*_list_*']`.
+    Giving `actions` switches the default `tool_mode` to `individual`, where the globs apply."""
 
-    tool_mode: ToolMode = 'individual'
+    tool_mode: ToolMode | None = None
     """`individual` registers one tool per enabled action; `search_execute` registers two
     server-side meta-tools (search the catalog, execute an action by id) whose prompt
-    footprint stays constant however large the catalog is."""
+    footprint stays constant however large the catalog is. `None` picks `search_execute`,
+    or `individual` when `actions` are given."""
 
     include_instructions: bool = True
     """Inject StackOne usage instructions into the system prompt."""
@@ -67,7 +70,7 @@ class StackOne(AbstractCapability[AgentDepsT]):
     """Replacement for the default `{base_url}/mcp` connection; see `StackOneToolset`."""
 
     def __post_init__(self) -> None:
-        if self.tool_mode == 'search_execute' and self.defer_loading:
+        if resolve_tool_mode(self.tool_mode, self.actions) == 'search_execute' and self.defer_loading:
             # stacklevel 3: user code -> generated `__init__` -> `__post_init__`.
             warnings.warn(
                 '`defer_loading` hides the two `search_execute` meta-tools behind `tool_search`, adding '
@@ -93,7 +96,8 @@ class StackOne(AbstractCapability[AgentDepsT]):
         """StackOne usage guidance; the underlying MCP toolset provides none itself."""
         if not self.include_instructions:
             return None
-        return _SEARCH_EXECUTE_INSTRUCTIONS if self.tool_mode == 'search_execute' else _INDIVIDUAL_INSTRUCTIONS
+        mode = resolve_tool_mode(self.tool_mode, self.actions)
+        return _SEARCH_EXECUTE_INSTRUCTIONS if mode == 'search_execute' else _INDIVIDUAL_INSTRUCTIONS
 
     @classmethod
     def get_serialization_name(cls) -> str:
