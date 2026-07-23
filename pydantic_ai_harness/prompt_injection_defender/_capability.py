@@ -315,11 +315,6 @@ class PromptInjectionDefender(AbstractCapability[AgentDepsT]):
             wrapped = False
             return_value, content, metadata = original, None, None
 
-        # An exception returned (not raised) by a tool carries recovery information the
-        # model needs verbatim; raised errors and `ModelRetry` do not reach this hook.
-        if isinstance(return_value, BaseException):
-            return original
-
         value_verdict, projected = await self._scan_value(return_value, call.tool_name)
         content_verdict = await self._scan_content(content, call.tool_name)
         scanned = [verdict for verdict in (value_verdict, content_verdict) if verdict is not None]
@@ -330,22 +325,27 @@ class PromptInjectionDefender(AbstractCapability[AgentDepsT]):
             if _flagged(verdict):
                 await self._notify(ctx, call, verdict)
 
+        # Record a unit's diagnostics only when that unit was flagged, so the metadata
+        # reflects each unit's own verdict rather than whether the value was rewritten.
+        value_record = value_verdict if value_verdict is not None and _flagged(value_verdict) else None
+        content_record = content_verdict if content_verdict is not None and _flagged(content_verdict) else None
+
         if any(not verdict.allowed for verdict in scanned):
-            message = self.blocked_message.format(tool_name=call.tool_name, risk_level=_worst_risk(scanned))
             # The entire result is replaced so no part of a blocked payload reaches the model.
+            message = self.blocked_message.format(tool_name=call.tool_name, risk_level=_worst_risk(scanned))
             return ToolReturn(
-                return_value=message, metadata=self._merged_metadata(metadata, value_verdict, content_verdict)
+                return_value=message, metadata=self._merged_metadata(metadata, value_record, content_record)
             )
 
         rebuilt = return_value
         if value_verdict is not None and (_findings(value_verdict) or self.annotate_boundary):
             rebuilt = _rebuild(return_value, projected, value_verdict.sanitized)
-        if rebuilt is return_value:
-            # Return the original object when the scan changed nothing, so a clean
-            # payload is not rewritten or wrapped in a `ToolReturn` it did not have.
+
+        if rebuilt is return_value and value_record is None and content_record is None:
+            # A clean result keeps its original type; a plain value is not wrapped in a `ToolReturn`.
             return original
 
-        new_metadata = self._merged_metadata(metadata, value_verdict, content_verdict)
+        new_metadata = self._merged_metadata(metadata, value_record, content_record)
         if wrapped:
             return ToolReturn(return_value=rebuilt, content=content, metadata=new_metadata)
         return ToolReturn(return_value=rebuilt, metadata=new_metadata)

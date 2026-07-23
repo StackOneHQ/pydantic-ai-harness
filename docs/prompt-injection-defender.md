@@ -118,7 +118,9 @@ Tier 2 classifier; install the `onnx` extra for tools that return free text.
 | `ToolReturn.metadata` | Not scanned; not visible to the model. |
 | Other objects (Pydantic models, dataclasses) | Scanned as the JSON the model would see; replaced by sanitized JSON on detection. |
 
-A clean result is returned unchanged, as the same object.
+A clean result is returned unchanged, as the same object. A tool that returns an
+exception object is scanned by its message text, so an error carrying injected
+content can still be flagged or blocked.
 
 Two results are not scanned. Provider-native tools (such as hosted web search) run
 on the provider's side and never reach your process. Results your application
@@ -162,11 +164,13 @@ agent = Agent(
 ```
 
 `on_detection` runs (sync or async) for each scanned value that defender blocked,
-sanitized, or rated high or critical risk. When a value is sanitized or blocked, a
-summary is also attached to the tool return's metadata under `prompt_injection`
-(and `prompt_injection_content` for separate content): `blocked`, `risk_level`,
+sanitized, or rated high or critical risk. When a scan flags the value or its
+content, the result is returned as a `ToolReturn` whose metadata records the
+flagged unit's diagnostics under `prompt_injection` (value) or
+`prompt_injection_content` (content), each with `blocked`, `risk_level`,
 `detections`, `fields_sanitized`, `patterns_by_field`, `tier2_score`, and
-`latency_ms`. Metadata is not sent to the model.
+`latency_ms`. A clean result passes through unchanged, and metadata is never sent
+to the model.
 
 ## Custom defense
 
