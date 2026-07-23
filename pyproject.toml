@@ -63,6 +63,9 @@ acp = [
 exa = [
     "exa-py>=2.16.0",
 ]
+prompt-injection-defender = [
+    "stackone-defender>=0.7.3,<0.8 ; python_full_version >= '3.11'",
+]
 
 [project.urls]
 Homepage = 'https://github.com/pydantic/pydantic-ai-harness'

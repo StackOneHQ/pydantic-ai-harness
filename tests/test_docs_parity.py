@@ -131,6 +131,7 @@ _CAPABILITY_PAGE_META = {
     'planning.md': ('planning', 'Planning'),
     'runtime-authoring.md': ('runtime_authoring', 'Runtime Authoring'),
     'guardrails.md': ('guardrails', 'Input & Output Guardrails'),
+    'prompt-injection-defender.md': ('prompt_injection_defender', 'Prompt Injection Defender'),
     'localstack.md': ('localstack', 'LocalStack'),
     'acp.md': ('experimental/acp', 'ACP (Agent Client Protocol)'),
 }
