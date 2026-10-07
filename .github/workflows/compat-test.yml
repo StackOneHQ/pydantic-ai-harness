@@ -44,7 +44,7 @@ env:
 jobs:
   compat:
     name: harness vs pydantic-ai @ ${{ inputs.pydantic-ai-ref }}
-    runs-on: warp-ubuntu-latest-x64-4x
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - name: Checkout harness (main)
